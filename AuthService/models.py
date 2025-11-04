@@ -20,7 +20,8 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
         load_instance = True
         include_fk = True
     password_hash = ma.auto_field(dump_only=True)
-    role = ma.String(validate=lambda r: r in ["Admin", "Assets Manager", "HR", "Employee"])
+    password = ma.String(required=True, load_only=True, validate=lambda p: len(p) >= 8, error_messages={"required": "Password is required."})
+    role = ma.String(required=True, validate=lambda r: r in ["Admin", "Assets Manager", "HR", "Employee"], error_messages={"required": "Role is required."})
     username = ma.String(required=True, validate=lambda u: len(u) >= 3, error_messages={"required": "Username is required."})
 
     @validates("username")

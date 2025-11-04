@@ -20,11 +20,54 @@ def add_asset():
     except ValidationError as err:
         return jsonify({"errors": err.messages}), 400
 
-    asset = Asset(**validated_data)
+    # asset_schema.load() returns an Asset instance when load_instance=True
+    if isinstance(validated_data, Asset):
+        asset = validated_data
+    else:
+        # If it's a dict, create Asset from it
+        asset = Asset(**validated_data)
+    
     db.session.add(asset)
     db.session.commit()
 
     return asset_schema.jsonify(asset), 201
+
+# Update an asset
+@assets_bp.route("/<int:asset_id>", methods=["PUT"])
+@token_required
+@role_required(["Admin", "Assets Manager"])
+def update_asset(asset_id):
+    asset = Asset.query.get(asset_id)
+    if not asset:
+        return jsonify({"error": "Asset not found"}), 404
+    
+    data = request.json
+    try:
+        # Load with partial=True to allow partial updates
+        validated_data = asset_schema.load(data, partial=True, instance=asset)
+    except ValidationError as err:
+        return jsonify({"errors": err.messages}), 400
+    
+    # Update asset fields
+    if isinstance(validated_data, Asset):
+        # If load_instance=True returns an instance, the instance is already updated
+        asset = validated_data
+    else:
+        # If it's a dict, update fields manually
+        if "name" in validated_data:
+            asset.name = validated_data["name"]
+        if "description" in validated_data:
+            asset.description = validated_data.get("description")
+        if "category" in validated_data:
+            asset.category = validated_data["category"]
+        if "is_available" in validated_data:
+            asset.is_available = validated_data["is_available"]
+            # If setting to available, clear user_id assignment
+            if validated_data["is_available"]:
+                asset.user_id = None
+    
+    db.session.commit()
+    return asset_schema.jsonify(asset), 200
 
 # Delete an asset
 @assets_bp.route("/<int:asset_id>", methods=["DELETE"])

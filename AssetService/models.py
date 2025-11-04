@@ -17,7 +17,7 @@ class AssetSchema(ma.SQLAlchemyAutoSchema):
     name = fields.String(required=True, validate=validate.Length(min=1, max=100))
     description = fields.String(validate=validate.Length(max=255))
     category = fields.String(required=True, validate=validate.Length(min=1, max=50))
-    is_available = fields.Boolean(dump_only=True)
+    is_available = fields.Boolean(allow_none=False, load_default=True)  # Allow updating is_available
     user_id = fields.Integer(
         allow_none=True,
         validate=lambda x: x is None or x > 0,

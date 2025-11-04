@@ -43,10 +43,13 @@ def role_required(required_roles):
     def wrapper(fn):
         @wraps(fn)
         def decorator(*args, **kwargs):
-            verify_jwt_in_request()
-            claims = get_jwt()
-            user_role = claims.get("role")
-            if user_role not in required_roles:
+            # Get role from g.jwt_data (set by token_required) instead of trying to verify JWT again
+            jwt_data = g.get('jwt_data')
+            if not jwt_data:
+                return jsonify({"error": "Token validation required first"}), 401
+            
+            user_role = jwt_data.get("role")
+            if not user_role or user_role not in required_roles:
                 return jsonify({"error": "You do not have access to this endpoint"}), 403
             return fn(*args, **kwargs)
         return decorator

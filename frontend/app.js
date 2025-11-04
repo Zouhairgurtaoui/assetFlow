@@ -59,13 +59,33 @@ if (document.getElementById('assetsTable')) {
     window.addEventListener('load', async () => {
         checkAuth();
         try {
+            // Validate token first
+            const token = authService.getToken();
+            if (!token) {
+                console.error('No token found, redirecting to login');
+                authService.logout();
+                return;
+            }
+            
+            console.log('Validating token...');
             const userData = await authService.validateToken();
+            console.log('Token validated, user data:', userData);
+            
             currentUser = userData;
-            document.getElementById('userInfo').textContent = `Welcome, ${userData.role}`;
-            loadAssets();
+            // Display user info - validate endpoint returns: {message, user, role}
+            const role = userData.role || 'User';
+            const username = userData.username || `User ${userData.user || ''}`;
+            document.getElementById('userInfo').textContent = `Welcome, ${role} (ID: ${userData.user || 'N/A'})`;
+            
+            // Load assets after token validation
+            console.log('Loading assets...');
+            await loadAssets();
         } catch (error) {
+            console.error('Error in page load:', error);
             showMessage('Session expired. Please login again.', 'warning');
-            authService.logout();
+            setTimeout(() => {
+                authService.logout();
+            }, 2000);
         }
     });
 
@@ -77,15 +97,26 @@ if (document.getElementById('assetsTable')) {
     // Load assets
     async function loadAssets() {
         try {
+            // Check if user is authenticated before loading assets
+            if (!authService.isAuthenticated()) {
+                showMessage('Please login to view assets', 'warning');
+                return;
+            }
+            
             const assets = await assetService.getAssets();
             const tbody = document.getElementById('assetsTableBody');
             tbody.innerHTML = '';
 
-            assets.forEach(asset => {
-                const row = createAssetRow(asset);
-                tbody.appendChild(row);
-            });
+            if (assets && assets.length > 0) {
+                assets.forEach(asset => {
+                    const row = createAssetRow(asset);
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-center">No assets found</td></tr>';
+            }
         } catch (error) {
+            console.error('Error loading assets:', error);
             showMessage('Failed to load assets: ' + error.message, 'danger');
         }
     }
@@ -107,6 +138,11 @@ if (document.getElementById('assetsTable')) {
     function createActionButtons(asset) {
         let buttons = '';
 
+        // Ensure currentUser exists and has role
+        if (!currentUser || !currentUser.role) {
+            return buttons;
+        }
+
         if (['Admin', 'Assets Manager'].includes(currentUser.role)) {
             buttons += `<button class="btn btn-sm btn-warning me-1" onclick="editAsset(${asset.id})">Edit</button>`;
             buttons += `<button class="btn btn-sm btn-danger me-1" onclick="deleteAsset(${asset.id})">Delete</button>`;
@@ -116,8 +152,15 @@ if (document.getElementById('assetsTable')) {
             buttons += `<button class="btn btn-sm btn-info me-1" onclick="assignAsset(${asset.id})">Assign</button>`;
         }
 
-        if (['Admin', 'Employee'].includes(currentUser.role) && !asset.is_available && asset.user_id == currentUser.user) {
-            buttons += `<button class="btn btn-sm btn-success" onclick="releaseAsset(${asset.id})">Release</button>`;
+        // Ensure user ID comparison is correct - both should be integers
+        // Admin can release any asset, Employee can only release their own
+        if (['Admin', 'Employee'].includes(currentUser.role) && !asset.is_available) {
+            const currentUserId = currentUser.user ? parseInt(currentUser.user) : null;
+            const assetUserId = asset.user_id ? parseInt(asset.user_id) : null;
+            // Admin can release any assigned asset, Employee can only release their own
+            if (currentUser.role === 'Admin' || (currentUserId !== null && assetUserId === currentUserId)) {
+                buttons += `<button class="btn btn-sm btn-success" onclick="releaseAsset(${asset.id})">Release</button>`;
+            }
         }
 
         return buttons;
@@ -130,6 +173,8 @@ if (document.getElementById('assetsTable')) {
         document.getElementById('assetName').value = '';
         document.getElementById('assetDescription').value = '';
         document.getElementById('assetCategory').value = '';
+        document.getElementById('assetIsAvailable').checked = true; // New assets are available by default
+        document.getElementById('assetIsAvailable').disabled = false;
     });
 
     document.getElementById('saveAssetBtn').addEventListener('click', async () => {
@@ -139,16 +184,41 @@ if (document.getElementById('assetsTable')) {
             description: document.getElementById('assetDescription').value,
             category: document.getElementById('assetCategory').value,
         };
+        
+        // Only include is_available if editing (assetId exists)
+        if (assetId) {
+            assetData.is_available = document.getElementById('assetIsAvailable').checked;
+        }
 
         try {
             if (assetId) {
-                // Edit functionality (assuming PUT endpoint exists, but backend doesn't have it, so skip for now)
-                showMessage('Edit functionality not implemented in backend', 'warning');
+                // Update existing asset
+                await assetService.updateAsset(assetId, assetData);
+                showMessage('Asset updated successfully', 'success');
+                loadAssets();
+                // Reset form and close modal
+                document.getElementById('assetForm').reset();
+                const modalElement = document.getElementById('assetModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    // Remove aria-hidden before hiding to fix accessibility warning
+                    modalElement.removeAttribute('aria-hidden');
+                    modalInstance.hide();
+                }
             } else {
+                // Add new asset
                 await assetService.addAsset(assetData);
                 showMessage('Asset added successfully', 'success');
                 loadAssets();
-                bootstrap.Modal.getInstance(document.getElementById('assetModal')).hide();
+                // Reset form and close modal
+                document.getElementById('assetForm').reset();
+                const modalElement = document.getElementById('assetModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    // Remove aria-hidden before hiding to fix accessibility warning
+                    modalElement.removeAttribute('aria-hidden');
+                    modalInstance.hide();
+                }
             }
         } catch (error) {
             showMessage('Failed to save asset: ' + error.message, 'danger');
@@ -169,9 +239,30 @@ if (document.getElementById('assetsTable')) {
     };
 
     // Assign asset
-    window.assignAsset = (assetId) => {
+    window.assignAsset = async (assetId) => {
         document.getElementById('assignAssetId').value = assetId;
-        document.getElementById('assignUserId').value = '';
+        const userIdSelect = document.getElementById('assignUserId');
+        
+        // Load users for the dropdown
+        try {
+            const users = await authService.getUsers();
+            userIdSelect.innerHTML = '<option value="">Select a user...</option>';
+            
+            users.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.username} (${user.role})`;
+                userIdSelect.appendChild(option);
+            });
+        } catch (error) {
+            console.error('Failed to load users:', error);
+            showMessage('Failed to load users. Please try again.', 'warning');
+            // Still show modal but with empty dropdown
+            userIdSelect.innerHTML = '<option value="">Failed to load users</option>';
+        }
+        
+        // Reset selection
+        userIdSelect.value = '';
         new bootstrap.Modal(document.getElementById('assignModal')).show();
     };
 
@@ -183,7 +274,15 @@ if (document.getElementById('assetsTable')) {
             await assetService.assignAsset(assetId, parseInt(userId));
             showMessage('Asset assigned successfully', 'success');
             loadAssets();
-            bootstrap.Modal.getInstance(document.getElementById('assignModal')).hide();
+                // Reset form and close modal
+                document.getElementById('assignForm').reset();
+                const modalElement = document.getElementById('assignModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalElement);
+                if (modalInstance) {
+                    // Remove aria-hidden before hiding to fix accessibility warning
+                    modalElement.removeAttribute('aria-hidden');
+                    modalInstance.hide();
+                }
         } catch (error) {
             showMessage('Failed to assign asset: ' + error.message, 'danger');
         }
@@ -202,8 +301,33 @@ if (document.getElementById('assetsTable')) {
         }
     };
 
-    // Edit asset (placeholder, since backend doesn't have edit endpoint)
-    window.editAsset = (assetId) => {
-        showMessage('Edit functionality not implemented in backend', 'warning');
+    // Edit asset
+    window.editAsset = async (assetId) => {
+        try {
+            // Load all assets to find the one to edit
+            const assets = await assetService.getAssets();
+            const asset = assets.find(a => a.id === parseInt(assetId));
+            
+            if (!asset) {
+                showMessage('Asset not found', 'danger');
+                return;
+            }
+
+            // Populate the form with asset data
+            document.getElementById('assetModalTitle').textContent = 'Edit Asset';
+            document.getElementById('assetId').value = asset.id;
+            document.getElementById('assetName').value = asset.name || '';
+            document.getElementById('assetDescription').value = asset.description || '';
+            document.getElementById('assetCategory').value = asset.category || '';
+            document.getElementById('assetIsAvailable').checked = asset.is_available || false;
+            document.getElementById('assetIsAvailable').disabled = false; // Enable the checkbox for editing
+
+            // Show the modal
+            const modalElement = document.getElementById('assetModal');
+            const modal = new bootstrap.Modal(modalElement);
+            modal.show();
+        } catch (error) {
+            showMessage('Failed to load asset for editing: ' + error.message, 'danger');
+        }
     };
 }

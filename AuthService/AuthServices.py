@@ -14,13 +14,21 @@ def register():
     except Exception as err:
         return jsonify({"error": str(err)}), 400
     
-    if User.query.filter_by(username=user_data["username"]).first():
+    # Get password from request (it's validated but not in the instance)
+    password = request.json.get("password")
+    if not password:
+        return jsonify({"error": "Password is required"}), 400
+    
+    # Check if username already exists
+    if User.query.filter_by(username=user_data.username).first():
         return jsonify({"error": "Username already exists"}), 409
+    
+    # user_data is a User instance when load_instance=True
     user = User(
-        username=user_data["username"],
-        role=user_data["role"]
+        username=user_data.username,
+        role=user_data.role
     )
-    user.set_password(request.json["password"])
+    user.set_password(password)
     db.session.add(user)
     db.session.commit()
     return jsonify({"message": "User registered successfully"}), 201
@@ -28,16 +36,25 @@ def register():
 # Login user
 @auth_bp.route('/login', methods=['POST'])
 def login():
+    # Get username and password directly from request
+    username = request.json.get("username")
+    password = request.json.get("password")
+    
+    if not username or not password:
+        return jsonify({"error": "Username and password are required"}), 400
+    
+    # Validate username format
     try:
         user_schema = UserSchema(only=("username",))
-        login_data = user_schema.load(request.json)
+        # Just validate username format, don't load instance
+        user_schema.load({"username": username}, partial=True)
     except Exception as err:
         return jsonify({"error": str(err)}), 400
-    username = login_data.get("username")
-    password = request.json.get("password")
+    
     user = User.query.filter_by(username=username).first()
     if not user or not user.check_password(password):
         return jsonify({"error": "Invalid username or password"}), 401
+    
     identity = str(user.id)
     additional_claims = {"username": user.username, "role": user.role}
     access_token = create_access_token(identity=identity, additional_claims=additional_claims)
@@ -69,3 +86,15 @@ def validate_token():
         return jsonify({"message": "Token is valid", "user": int(current_user), "role": role}), 200
     except Exception as e:
         return jsonify({"error": f"Invalid token: {str(e)}"}), 401
+
+# Get all users (for dropdowns)
+@auth_bp.route("/users", methods=["GET"])
+@jwt_required()
+def get_users():
+    try:
+        users = User.query.all()
+        # Return only id, username, and role (no password)
+        users_data = [{"id": user.id, "username": user.username, "role": user.role} for user in users]
+        return jsonify(users_data), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch users: {str(e)}"}), 500
