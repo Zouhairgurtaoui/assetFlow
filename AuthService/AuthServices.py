@@ -6,28 +6,42 @@ from AuthService import db
 
 auth_bp = Blueprint("auth", __name__)
 
-# Register a new user
+# Register a new user (Admin-only), except bootstrap (first user)
 @auth_bp.route('/register', methods=['POST'])
 def register():
+    # If there are no users, allow bootstrap without JWT and force Admin role
+    is_bootstrap = User.query.count() == 0
+    claims = None
+    if not is_bootstrap:
+        try:
+            verify_jwt_in_request()
+            claims = get_jwt()
+            if claims.get("role") != "Admin":
+                return jsonify({"error": "Admin role required"}), 403
+        except Exception as err:
+            return jsonify({"error": f"Unauthorized: {str(err)}"}), 401
+
     user_schema = UserSchema()
     try:
         user_data = user_schema.load(request.json)
     except Exception as err:
         return jsonify({"error": str(err)}), 400
-    
-    # Get password from request (it's validated but not in the instance)
+
     password = request.json.get("password")
     if not password:
         return jsonify({"error": "Password is required"}), 400
-    
-    # Check if username already exists
+
     if User.query.filter_by(username=user_data.username).first():
         return jsonify({"error": "Username already exists"}), 409
-    
-    # user_data is a User instance when load_instance=True
+
+    # Force Admin role for the very first user
+    role = user_data.role
+    if is_bootstrap:
+        role = "Admin"
+
     user = User(
         username=user_data.username,
-        role=user_data.role,
+        role=role,
         department=getattr(user_data, 'department', None)
     )
     user.set_password(password)

@@ -49,10 +49,12 @@ class AuthService {
 
     async register(username, password, role, department) {
         try {
+            const token = this.getToken();
             const response = await fetch(`${this.baseURL}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                 },
                 body: JSON.stringify({ username, password, role, department }),
             });

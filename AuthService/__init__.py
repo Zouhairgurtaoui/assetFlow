@@ -63,5 +63,17 @@ def create_app():
     with app.app_context():
         db.create_all()
         print("Database tables verified/created")
+        # Bootstrap initial admin if none exists
+        try:
+            from AuthService.models import User
+            if User.query.count() == 0:
+                admin_password = os.environ.get('ADMIN_PASSWORD', 'Admin@1234')
+                admin = User(username='admin', role='Admin', department='IT')
+                admin.set_password(admin_password)
+                db.session.add(admin)
+                db.session.commit()
+                print("Initial admin user created: username='admin'")
+        except Exception as e:
+            print(f"Admin bootstrap skipped/failed: {e}")
 
     return app
