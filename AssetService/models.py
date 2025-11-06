@@ -9,6 +9,9 @@ class Asset(db.Model):
     category = db.Column(db.String(50), nullable=False)
     is_available = db.Column(db.Boolean, default=True)
     user_id = db.Column(db.Integer, nullable=True)
+    serial_number = db.Column(db.String(100), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
 class AssetSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
@@ -24,3 +27,19 @@ class AssetSchema(ma.SQLAlchemyAutoSchema):
         validate=lambda x: x is None or x > 0,
         error_messages={"validator_failed": "User ID must be a positive integer or null."}
     )
+    serial_number = fields.String(validate=validate.Length(max=100))
+
+class AssetLog(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    asset_id = db.Column(db.Integer, nullable=False)
+    action = db.Column(db.String(50), nullable=False)  # created, updated, assigned, released, deleted
+    performed_by_user_id = db.Column(db.Integer, nullable=True)
+    from_user_id = db.Column(db.Integer, nullable=True)
+    to_user_id = db.Column(db.Integer, nullable=True)
+    details = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, server_default=db.func.now())
+
+class AssetLogSchema(ma.SQLAlchemyAutoSchema):
+    class Meta:
+        model = AssetLog
+        load_instance = True

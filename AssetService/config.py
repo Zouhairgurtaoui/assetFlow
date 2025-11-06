@@ -5,5 +5,6 @@ class Config:
     SECRET_KEY = "5b1043ca39770af2b3086c74c2c53f74115c63b4bb8be17b98e92138928daf14"
     JWT_SECRET_KEY = "52be6f8543e522f24263a65cba17a3d2ba7f9a9e9d05806aed8c4704cbf96e1e"
     JWT_TOKEN_LOCATION = ['headers']
-    SQLALCHEMY_DATABASE_URI = "sqlite:///assets.db"
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    SQLALCHEMY_DATABASE_URI = f"sqlite:///{os.path.join(BASE_DIR, 'assets.db')}"
     SQLALCHEMY_TRACK_MODIFICATIONS = False

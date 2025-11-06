@@ -1,7 +1,7 @@
 #AssetServices.py
 from marshmallow import ValidationError
 from flask import jsonify, request, Blueprint, g
-from AssetService.models import Asset, AssetSchema
+from AssetService.models import Asset, AssetSchema, AssetLog, AssetLogSchema
 from AssetService import db
 from AssetService.helpers import role_required, token_required
 
@@ -9,6 +9,7 @@ assets_bp = Blueprint("assets", __name__)
 
 asset_schema = AssetSchema()
 assets_schema = AssetSchema(many=True)
+asset_log_schema = AssetLogSchema(many=True)
 
 # Add a new asset
 @assets_bp.route("/", methods=["POST"])
@@ -30,6 +31,14 @@ def add_asset():
     
     db.session.add(asset)
     db.session.commit()
+    # log creation
+    try:
+        claims = g.jwt_data
+        performed_by = claims.get("user") if isinstance(claims, dict) else None
+        db.session.add(AssetLog(asset_id=asset.id, action="created", performed_by_user_id=performed_by, details=f"Asset '{asset.name}' created"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
 
     return asset_schema.jsonify(asset), 201
 
@@ -68,6 +77,13 @@ def update_asset(asset_id):
                 asset.user_id = None
     
     db.session.commit()
+    try:
+        claims = g.jwt_data
+        performed_by = claims.get("user") if isinstance(claims, dict) else None
+        db.session.add(AssetLog(asset_id=asset.id, action="updated", performed_by_user_id=performed_by, details=f"Asset '{asset.name}' updated"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     return asset_schema.jsonify(asset), 200
 
 # Delete an asset
@@ -78,8 +94,14 @@ def delete_asset(asset_id):
     asset = Asset.query.get(asset_id)
     if not asset:
         return jsonify({"error": "Asset not found"}), 404
-    db.session.delete(asset)
-    db.session.commit()
+    try:
+        claims = g.jwt_data
+        performed_by = claims.get("user") if isinstance(claims, dict) else None
+        db.session.add(AssetLog(asset_id=asset.id, action="deleted", performed_by_user_id=performed_by, details=f"Asset '{asset.name}' deleted"))
+        db.session.delete(asset)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     return jsonify({"message": f"Asset with ID {asset_id} has been deleted successfully"}), 200
 
 # Assign an asset
@@ -100,6 +122,13 @@ def assign_asset(asset_id):
     asset.user_id = user_id
     asset.is_available = False
     db.session.commit()
+    try:
+        claims = g.jwt_data
+        performed_by = claims.get("user") if isinstance(claims, dict) else None
+        db.session.add(AssetLog(asset_id=asset.id, action="assigned", performed_by_user_id=performed_by, to_user_id=user_id, details=f"Assigned to user {user_id}"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     return asset_schema.jsonify(asset), 200
 
 # Release an asset
@@ -114,9 +143,16 @@ def release_asset(asset_id):
     user_id = claims["user"]
     if asset.user_id != user_id and claims["role"] != "Admin":
         return jsonify({"error": "You are not authorized to release this asset"}), 403
+    from_user = asset.user_id
     asset.user_id = None
     asset.is_available = True
     db.session.commit()
+    try:
+        performed_by = claims.get("user") if isinstance(claims, dict) else None
+        db.session.add(AssetLog(asset_id=asset.id, action="released", performed_by_user_id=performed_by, from_user_id=from_user, details=f"Released from user {from_user}"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     return asset_schema.jsonify(asset), 200
 
 # Get all assets
@@ -133,3 +169,24 @@ def get_assets():
         query = query.filter_by(is_available=is_available.lower() == "true")
     assets = query.all()
     return assets_schema.jsonify(assets), 200
+
+# Get logs for an asset
+@assets_bp.route("/<int:asset_id>/logs", methods=["GET"])
+@token_required
+@role_required(["Admin", "Assets Manager", "HR", "Employee"])
+def get_asset_logs(asset_id):
+    logs = AssetLog.query.filter_by(asset_id=asset_id).order_by(AssetLog.created_at.desc()).all()
+    return asset_log_schema.jsonify(logs), 200
+
+# Get recent logs (admin feed)
+@assets_bp.route("/logs", methods=["GET"])
+@token_required
+@role_required(["Admin", "Assets Manager"])  # Admin feed; allow Assets Manager too
+def get_recent_logs():
+    try:
+        limit = int(request.args.get("limit", 50))
+        limit = max(1, min(limit, 200))
+    except Exception:
+        limit = 50
+    logs = AssetLog.query.order_by(AssetLog.created_at.desc()).limit(limit).all()
+    return asset_log_schema.jsonify(logs), 200

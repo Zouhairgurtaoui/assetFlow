@@ -47,14 +47,14 @@ class AuthService {
         }
     }
 
-    async register(username, password, role) {
+    async register(username, password, role, department) {
         try {
             const response = await fetch(`${this.baseURL}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ username, password, role }),
+                body: JSON.stringify({ username, password, role, department }),
             });
 
             if (!response.ok) {

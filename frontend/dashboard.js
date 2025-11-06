@@ -10,6 +10,8 @@
     const logoutBtn = document.getElementById('logoutBtn');
     const sidebar = document.getElementById('sidebar');
     const sidebarToggle = document.getElementById('sidebarToggle');
+    const rightSidebar = document.getElementById('rightSidebar');
+    const activityList = document.getElementById('activityList');
 
     // Sidebar toggle
     sidebarToggle?.addEventListener('click', () => {
@@ -28,6 +30,16 @@
             document.getElementById(id).classList.remove('d-none');
             if (id === 'section-assets') renderAssetsTable();
             if (id === 'section-users') renderUsersTable();
+            // Toggle right activity sidebar only on dashboard for Admin
+            const role = getRoleFromToken();
+            if (id === 'section-dashboard' && role === 'Admin') {
+                rightSidebar?.classList.remove('d-none');
+                document.body.classList.add('with-right-sidebar');
+                fetchAndRenderActivity();
+            } else {
+                rightSidebar?.classList.add('d-none');
+                document.body.classList.remove('with-right-sidebar');
+            }
         });
     });
 
@@ -55,8 +67,24 @@
         }
         userInfo.textContent = `Signed in as ${payload.username}`;
         roleBadge.textContent = payload.role || 'Unknown';
+        // Adjust right sidebar top offset under navbar
+        const navbar = document.querySelector('.navbar');
+        const setSidebarTop = () => {
+            if (rightSidebar && navbar) {
+                rightSidebar.style.top = navbar.offsetHeight + 'px';
+            }
+        };
+        setSidebarTop();
+        window.addEventListener('resize', setSidebarTop);
         if (payload.role === 'Admin') {
             usersNavLink.style.display = '';
+            // Only show on initial load if dashboard section is active
+            const dashboardVisible = !sections.dashboard.classList.contains('d-none');
+            if (dashboardVisible) {
+                rightSidebar?.classList.remove('d-none');
+                document.body.classList.add('with-right-sidebar');
+                fetchAndRenderActivity();
+            }
         }
     }
 
@@ -65,6 +93,7 @@
     });
 
     let assets = [];
+    let selectedAssetId = null;
     function isAssigned(a) {
         if (a == null) return false;
         const uid = a.user_id;
@@ -83,6 +112,7 @@
     let usersCache = [];
     let userIdToName = new Map();
     let charts = { byCategory: null, availability: null };
+    let activityTimer = null;
 
     async function loadAssets() {
         assets = await assetService.getAssets();
@@ -144,16 +174,26 @@
             const availableFlag = isAssetAvailable(a);
             tr.innerHTML = `
                 <td>${a.id}</td>
-                <td>${a.name}</td>
-                <td>${a.category}</td>
+                <td><span class="text-muted">${a.serial_number ?? '-'}</span></td>
+                <td>
+                    <div class="fw-semibold">${a.name}</div>
+                    <div class="text-muted small">${a.description ? a.description : ''}</div>
+                </td>
+                <td><span class="badge bg-light text-dark">${a.category}</span></td>
                 <td>${availableFlag ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-warning text-dark">No</span>'}</td>
                 <td>${isAssigned(a) ? (userIdToName.get(String(a.user_id)) || a.user_id) : '-'}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${a.id}">Edit</button>
                     <button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${a.id}">Delete</button>
                     ${availableFlag ? `<button class="btn btn-sm btn-outline-primary ms-1" data-action="assign" data-id="${a.id}">Assign</button>` : `<button class="btn btn-sm btn-outline-success ms-1" data-action="release" data-id="${a.id}">Release</button>`}
+                    
                 </td>
             `;
+            tr.addEventListener('click', () => {
+                selectedAssetId = a.id;
+                const btn = document.getElementById('viewLogsBtn');
+                if (btn) btn.disabled = false;
+            });
             tbody.appendChild(tr);
         });
     }
@@ -163,6 +203,8 @@
         renderAssetsTable();
     });
 
+    document.getElementById('refreshActivityBtn')?.addEventListener('click', fetchAndRenderActivity);
+
     // Asset modal handlers (lazy create to avoid bootstrap timing issues)
     const assetModalEl = document.getElementById('assetModal');
     function getAssetModal() {
@@ -171,6 +213,7 @@
         return existing || new window.bootstrap.Modal(assetModalEl);
     }
     const assetIdEl = document.getElementById('assetId');
+    const assetSerialEl = document.getElementById('assetSerial');
     const assetNameEl = document.getElementById('assetName');
     const assetDescEl = document.getElementById('assetDescription');
     const assetCatEl = document.getElementById('assetCategory');
@@ -182,6 +225,7 @@
         if (!assetModal) return;
         assetModalTitle.textContent = 'Add Asset';
         assetIdEl.value = '';
+        assetSerialEl.value = '';
         assetNameEl.value = '';
         assetDescEl.value = '';
         assetCatEl.value = '';
@@ -194,6 +238,7 @@
         if (!assetModal) return;
         assetModalTitle.textContent = 'Edit Asset';
         assetIdEl.value = asset.id;
+        assetSerialEl.value = asset.serial_number || '';
         assetNameEl.value = asset.name || '';
         assetDescEl.value = asset.description || '';
         assetCatEl.value = asset.category || '';
@@ -205,6 +250,7 @@
 
     document.getElementById('saveAssetBtn')?.addEventListener('click', async () => {
         const payload = {
+            serial_number: assetSerialEl.value || null,
             name: assetNameEl.value,
             description: assetDescEl.value,
             category: assetCatEl.value,
@@ -248,6 +294,9 @@
                 await assetService.releaseAsset(id);
                 await loadAssets();
                 renderAssetsTable();
+            } else if (action === 'logs') {
+                selectedAssetId = id;
+                await openLogsModal();
             }
         } catch (err) {
             alert(err.message || 'Operation failed');
@@ -297,6 +346,83 @@
         } catch (err) { alert(err.message || 'Failed to assign'); }
     });
 
+    // Logs
+    async function openLogsModal() {
+        if (!selectedAssetId) return;
+        try {
+            const token = authService.getToken();
+            const host = window.location.hostname === '127.0.0.1' ? '127.0.0.1' : 'localhost';
+            const res = await fetch(`http://${host}:8000/assets/${selectedAssetId}/logs`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const logs = await res.json();
+            const tbody = document.getElementById('logsTableBody');
+            tbody.innerHTML = '';
+            logs.forEach(l => {
+                const tr = document.createElement('tr');
+                const by = l.performed_by_user_id ? (userIdToName.get(String(l.performed_by_user_id)) || l.performed_by_user_id) : '-';
+                const from = l.from_user_id ? (userIdToName.get(String(l.from_user_id)) || l.from_user_id) : '-';
+                const to = l.to_user_id ? (userIdToName.get(String(l.to_user_id)) || l.to_user_id) : '-';
+                tr.innerHTML = `
+                    <td>${new Date(l.created_at).toLocaleString()}</td>
+                    <td><span class="badge bg-light text-dark">${l.action}</span></td>
+                    <td>${by}</td>
+                    <td>${from}</td>
+                    <td>${to}</td>
+                    <td>${l.details || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            const modalEl = document.getElementById('logsModal');
+            const modal = window.bootstrap.Modal.getInstance(modalEl) || new window.bootstrap.Modal(modalEl);
+            modal.show();
+        } catch (e) {
+            alert('Failed to load logs');
+        }
+    }
+
+    document.getElementById('viewLogsBtn')?.addEventListener('click', openLogsModal);
+
+    function activityColor(action) {
+        switch ((action || '').toLowerCase()) {
+            case 'created': return 'create';
+            case 'updated': return 'updated';
+            case 'assigned': return 'assigned';
+            case 'released': return 'released';
+            case 'deleted': return 'deleted';
+            default: return 'updated';
+        }
+    }
+
+    async function fetchAndRenderActivity() {
+        const token = authService.getToken();
+        const host = window.location.hostname === '127.0.0.1' ? '127.0.0.1' : 'localhost';
+        try {
+            const res = await fetch(`http://${host}:8000/assets/logs?limit=50`, { headers: { 'Authorization': `Bearer ${token}` } });
+            if (!res.ok) return;
+            const logs = await res.json();
+            activityList.innerHTML = '';
+            logs.forEach(l => {
+                const dot = activityColor(l.action);
+                const by = l.performed_by_user_id ? (userIdToName.get(String(l.performed_by_user_id)) || l.performed_by_user_id) : '-';
+                const el = document.createElement('div');
+                el.className = 'activity-item';
+                el.innerHTML = `
+                    <div class="activity-dot ${dot}"></div>
+                    <div>
+                        <div class="activity-title text-capitalize">${l.action} • Asset #${l.asset_id}</div>
+                        <div class="activity-meta">${new Date(l.created_at).toLocaleString()} • by ${by}</div>
+                    </div>
+                `;
+                el.addEventListener('click', () => { selectedAssetId = l.asset_id; openLogsModal(); });
+                activityList.appendChild(el);
+            });
+            // Start polling every 15s
+            if (activityTimer) clearTimeout(activityTimer);
+            activityTimer = setTimeout(fetchAndRenderActivity, 15000);
+        } catch {}
+    }
+
     async function renderUsersTable() {
         const role = getRoleFromToken();
         if (role !== 'Admin') return;
@@ -310,6 +436,7 @@
                 tr.innerHTML = `
                     <td>${u.id}</td>
                     <td>${u.username}</td>
+                    <td>${u.department || '-'}</td>
                     <td>
                         <select class="form-select form-select-sm" data-user-id="${u.id}">
                             ${['Admin','Assets Manager','HR','Employee'].map(r => `<option value="${r}" ${r===u.role?'selected':''}>${r}</option>`).join('')}
@@ -354,9 +481,9 @@
     createUserForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(createUserForm);
-        const payload = { username: fd.get('username'), password: fd.get('password'), role: fd.get('role') };
+        const payload = { username: fd.get('username'), password: fd.get('password'), role: fd.get('role'), department: fd.get('department') };
         try {
-            await authService.register(payload.username, payload.password, payload.role);
+            await authService.register(payload.username, payload.password, payload.role, payload.department);
             createUserForm.reset();
             const modalEl = document.getElementById('createUserModal');
             const modal = bootstrap.Modal.getInstance(modalEl);

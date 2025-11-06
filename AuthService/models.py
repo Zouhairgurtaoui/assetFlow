@@ -8,7 +8,7 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     role = db.Column(db.String(50), nullable=False)  
-
+    department = db.Column(db.String(100), nullable=True)
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
 
@@ -24,6 +24,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     password = ma.String(required=True, load_only=True, validate=lambda p: len(p) >= 8, error_messages={"required": "Password is required."})
     role = ma.String(required=True, validate=lambda r: r in ["Admin", "Assets Manager", "HR", "Employee"], error_messages={"required": "Role is required."})
     username = ma.String(required=True, validate=lambda u: len(u) >= 3, error_messages={"required": "Username is required."})
+    department = ma.String(validate=lambda d: len(d) <= 100)
 
     @validates("username")
     def validate_username(self, value):

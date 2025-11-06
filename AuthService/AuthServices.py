@@ -27,7 +27,8 @@ def register():
     # user_data is a User instance when load_instance=True
     user = User(
         username=user_data.username,
-        role=user_data.role
+        role=user_data.role,
+        department=getattr(user_data, 'department', None)
     )
     user.set_password(password)
     db.session.add(user)
@@ -94,8 +95,16 @@ def validate_token():
 def get_users():
     try:
         users = User.query.all()
-        # Return only id, username, and role (no password)
-        users_data = [{"id": user.id, "username": user.username, "role": user.role} for user in users]
+        # Return id, username, role, and department (no password)
+        users_data = [
+            {
+                "id": user.id,
+                "username": user.username,
+                "role": user.role,
+                "department": getattr(user, "department", None)
+            }
+            for user in users
+        ]
         return jsonify(users_data), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch users: {str(e)}"}), 500
