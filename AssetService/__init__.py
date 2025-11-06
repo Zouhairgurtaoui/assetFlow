@@ -1,4 +1,5 @@
 from flask import Flask
+import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_marshmallow import Marshmallow
@@ -10,10 +11,18 @@ jwt = JWTManager()
 ma = Marshmallow()
 
 def create_app():
-    app = Flask(__name__)
+    app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
     # Disable strict slashes to prevent redirects that break CORS preflight
     app.url_map.strict_slashes = False
+
+    # ensure instance dir exists and place DB inside it
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass
+    db_path = os.path.join(app.instance_path, 'assets.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     # Enable CORS for all routes - allow all origins for development
     # Configure CORS to handle all asset routes including nested paths

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_marshmallow import Marshmallow
@@ -11,8 +12,17 @@ jwt = JWTManager()
 ma = Marshmallow()
 
 def create_app():
-    app = Flask(__name__)
+    # enable instance folder usage
+    app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
+
+    # ensure instance dir exists and point DB into instance/
+    try:
+        os.makedirs(app.instance_path, exist_ok=True)
+    except OSError:
+        pass
+    db_path = os.path.join(app.instance_path, 'users.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}'
 
     # Enable CORS for all routes
     CORS(app, resources={
