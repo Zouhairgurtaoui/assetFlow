@@ -47,5 +47,9 @@ def create_app():
         response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
         response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         return response
+    
+    with app.app_context():
+        db.create_all()
+        print("Database tables verified/created")
 
     return app

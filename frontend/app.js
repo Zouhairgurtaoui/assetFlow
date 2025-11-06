@@ -1,3 +1,4 @@
+//app.js
 // Global variables
 let currentUser = null;
 

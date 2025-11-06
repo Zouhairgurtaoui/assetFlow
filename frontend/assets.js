@@ -1,3 +1,4 @@
+//assets.js
 class AssetService {
     constructor() {
         // Use the same host as the frontend to avoid CORS/hostname issues
@@ -119,7 +120,8 @@ class AssetService {
 
     async deleteAsset(assetId) {
         try {
-            const response = await fetch(`${this.baseURL}/${assetId}`, {
+            const baseUrl = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+            const response = await fetch(`${baseUrl}/${assetId}`, {
                 method: 'DELETE',
                 headers: this.getHeaders(),
             });

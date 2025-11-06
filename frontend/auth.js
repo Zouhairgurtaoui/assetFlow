@@ -1,3 +1,4 @@
+//auth.js
 class AuthService {
     constructor() {
         this.baseURL = 'http://localhost:5000/auth';

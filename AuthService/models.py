@@ -1,3 +1,4 @@
+#models.py
 from AuthService import db, ma
 from werkzeug.security import generate_password_hash, check_password_hash
 from marshmallow import ValidationError, validates
@@ -6,7 +7,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
-    role = db.Column(db.String(50), nullable=False)  # Admin, Assets Manager, HR, Employee
+    role = db.Column(db.String(50), nullable=False)  
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

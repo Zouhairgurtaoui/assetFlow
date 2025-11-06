@@ -1,3 +1,4 @@
+#AuthServices.py
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt, get_jwt_identity, verify_jwt_in_request
 from AuthService.models import User, UserSchema
@@ -98,3 +99,59 @@ def get_users():
         return jsonify(users_data), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch users: {str(e)}"}), 500
+
+# Get current user info
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def me():
+    try:
+        claims = get_jwt()
+        return jsonify({
+            "id": int(get_jwt_identity()),
+            "username": claims.get("username"),
+            "role": claims.get("role"),
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch profile: {str(e)}"}), 400
+
+# Admin-only: update user role
+@auth_bp.route('/users/<int:user_id>', methods=['PUT'])
+@jwt_required()
+def update_user(user_id):
+    try:
+        claims = get_jwt()
+        if claims.get("role") != "Admin":
+            return jsonify({"error": "Admin role required"}), 403
+
+        role = request.json.get("role")
+        if role not in ["Admin", "Assets Manager", "HR", "Employee"]:
+            return jsonify({"error": "Invalid role"}), 400
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        user.role = role
+        db.session.commit()
+        return jsonify({"message": "User updated"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to update user: {str(e)}"}), 400
+
+# Admin-only: delete user
+@auth_bp.route('/users/<int:user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+    try:
+        claims = get_jwt()
+        if claims.get("role") != "Admin":
+            return jsonify({"error": "Admin role required"}), 403
+
+        user = User.query.get(user_id)
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        db.session.delete(user)
+        db.session.commit()
+        return jsonify({"message": "User deleted"}), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to delete user: {str(e)}"}), 400

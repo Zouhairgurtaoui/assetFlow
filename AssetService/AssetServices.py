@@ -1,3 +1,4 @@
+#AssetServices.py
 from marshmallow import ValidationError
 from flask import jsonify, request, Blueprint, g
 from AssetService.models import Asset, AssetSchema
@@ -84,7 +85,7 @@ def delete_asset(asset_id):
 # Assign an asset
 @assets_bp.route("/assign/<int:asset_id>", methods=["PUT"])
 @token_required
-@role_required(["Admin", "HR"])
+@role_required(["Admin", "Assets Manager", "HR"])
 def assign_asset(asset_id):
     data = request.json
     try:
@@ -104,7 +105,7 @@ def assign_asset(asset_id):
 # Release an asset
 @assets_bp.route("/release/<int:asset_id>", methods=["PUT"])
 @token_required
-@role_required(["Admin", "Employee"])
+@role_required(["Admin", "Assets Manager", "Employee"])
 def release_asset(asset_id):
     asset = Asset.query.get(asset_id)
     if not asset:
