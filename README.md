@@ -8,12 +8,17 @@ A lightweight asset management system with role-based access, elegant dashboard,
   - AssetService (port 8000): Assets CRUD, assignment, logsassetFlow/AssetService
 
 ## Quick Start
-
-1) Install Python deps and run services (from two terminals):
+1) Clone the repo
+   # ensure the git is installed in your local machine
+   ```bash
+   git clone 
+   ```
+3) Install Python deps and run services (from two terminals):
 
 ```bash
 # create a virtual envirenement
 python3 -m venv env .
+pip install -r requirements.txt
 # In linux
 source env/bin/activate
 # In Windows
@@ -25,9 +30,9 @@ python3 run_auth.py
 python3 run_assets.py
 ```
 
-2) Serve the frontend (e.g., VS Code Live Server or any static server ex: `python3 -m http.server 8080`) from `assetFlow/frontend/`, then open `index.html`.
+3) Serve the frontend (e.g., VS Code Live Server or any static server ex: `python3 -m http.server 8080`) from `assetFlow/frontend/`, then open `index.html`.
 
-3) Register an Admin, login, and go to `dashboard.html`.
+4) Register an Admin, login, and go to `dashboard.html`.
 
 Notes:
 - SQLite DB files are created at:
@@ -324,7 +329,7 @@ assetService.assignAsset(1, 5)
 
 - SQLite used for both services; absolute paths in config ensure the right file is used
 - To reset schema: stop services, delete DB files, restart
-- To migrate in place, use `sqlite3` and run `ALTER TABLE` statements (see discussion in issues/PR notes)
+- To migrate in place, use `sqlite3` and run `ALTER TABLE` statements 
 
 ---
 
@@ -346,15 +351,6 @@ Frontend surfaces server messages where possible (modals/alerts), and network er
 - JWT in Authorization header; never expose in URLs
 - CORS enabled for development; tighten in production
 - Server-side role checks via validated JWT payload (AssetService validates via AuthService `/auth/validate`)
-
----
-
-## Customization
-
-- Styling via `frontend/styles.css`
-- Right activity sidebar can be disabled or made collapsible
-- Charts can be extended (e.g., line chart for asset creation over time)
-
 ---
 
 ## Troubleshooting
@@ -362,11 +358,9 @@ Frontend surfaces server messages where possible (modals/alerts), and network er
 - “no such column” on startup: delete DB files to recreate schema
 - 401/403 when calling assets: ensure you’re logged in and role permits action
 - CORS errors: make sure both services are running on the documented ports
-- Modal widths: logs modal adapts to table width; see `dashboard.js` and `styles.css` rules under `#logsModal`
+
 
 ---
 
-## License
 
-Educational use; adapt as needed for your environment.
 
