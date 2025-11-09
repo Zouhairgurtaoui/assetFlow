@@ -27,7 +27,17 @@ class AssetService {
             if (!token) {
                 throw new Error('No authentication token. Please login again.');
             }
-            
+
+            // Parse token to get role
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userRole = payload.role;
+            const userId = payload.user;
+
+            // If Employee, force filter to their own assets
+            if (userRole === 'Employee') {
+                filters.user_id = userId;
+            }
+
             const queryParams = new URLSearchParams(filters).toString();
             const url = queryParams ? `${this.baseURL}?${queryParams}` : this.baseURL;
             

@@ -36,21 +36,12 @@ if (document.getElementById('loginForm')) {
     });
 }
 
-// Register page functionality
+// Register page functionality - disabled
 if (document.getElementById('registerForm')) {
-    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+    // Registration is disabled - only admins can create users
+    document.getElementById('registerForm').addEventListener('submit', (e) => {
         e.preventDefault();
-        const username = document.getElementById('registerUsername').value;
-        const password = document.getElementById('registerPassword').value;
-        const role = document.getElementById('registerRole').value;
-
-        try {
-            await authService.register(username, password, role);
-            showMessage('Registration successful! Please login.', 'success');
-            document.getElementById('login-tab').click();
-        } catch (error) {
-            showMessage(error.message, 'danger');
-        }
+        showMessage('Registration is disabled. Only administrators can create user accounts.', 'warning');
     });
 }
 

@@ -34,7 +34,7 @@ def register():
     if User.query.filter_by(username=user_data.username).first():
         return jsonify({"error": "Username already exists"}), 409
 
-    # Force Admin role for the very first user
+   
     role = user_data.role
     if is_bootstrap:
         role = "Admin"
@@ -42,7 +42,10 @@ def register():
     user = User(
         username=user_data.username,
         role=role,
-        department=getattr(user_data, 'department', None)
+        department=getattr(user_data, 'department', None),
+        firstname=user_data.firstname,
+        lastname=user_data.lastname,
+        email=user_data.email
     )
     user.set_password(password)
     db.session.add(user)
@@ -115,7 +118,10 @@ def get_users():
                 "id": user.id,
                 "username": user.username,
                 "role": user.role,
-                "department": getattr(user, "department", None)
+                "department": getattr(user, "department", None),
+                "firstname": getattr(user, "firstname", None),
+                "lastname": getattr(user, "lastname", None),
+                "email": getattr(user, "email", None)
             }
             for user in users
         ]

@@ -24,6 +24,33 @@
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const id = link.dataset.section;
+            const role = getRoleFromToken();
+            // Prevent Employees from accessing dashboard
+            if (role === 'Employee' && id === 'section-dashboard') {
+                return;
+            }
+            document.querySelectorAll('a.nav-link').forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+            Object.values(sections).forEach(s => s.classList.add('d-none'));
+            document.getElementById(id).classList.remove('d-none');
+            if (id === 'section-assets') renderAssetsTable();
+            if (id === 'section-users') renderUsersTable();
+            // Toggle right activity sidebar only on dashboard for Admin
+            if (id === 'section-dashboard' && role === 'Admin') {
+                rightSidebar?.classList.remove('d-none');
+                document.body.classList.add('with-right-sidebar');
+                fetchAndRenderActivity();
+            } else {
+                rightSidebar?.classList.add('d-none');
+                document.body.classList.remove('with-right-sidebar');
+            }
+        });
+    });
+    // Nav switching
+    document.querySelectorAll('a.nav-link').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const id = link.dataset.section;
             document.querySelectorAll('a.nav-link').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             Object.values(sections).forEach(s => s.classList.add('d-none'));
@@ -85,6 +112,21 @@
                 document.body.classList.add('with-right-sidebar');
                 fetchAndRenderActivity();
             }
+        }
+        // Hide charts and KPIs for Employees and route to assets
+        if (payload.role === 'Employee') {
+            document.getElementById('section-dashboard').querySelectorAll('.card').forEach(el => el.style.display = 'none');
+            // Hide dashboard nav link for Employees
+            document.getElementById('dashboardNavLink').style.display = 'none';
+            // Hide logs section for Employees
+            document.getElementById('logsSection').style.display = 'none';
+            // Hide add asset button for Employees
+            document.getElementById('addAssetBtn').style.display = 'none';
+            // Route Employee to assets section
+            document.querySelectorAll('a.nav-link').forEach(l => l.classList.remove('active'));
+            document.querySelector('a[data-section="section-assets"]').classList.add('active');
+            Object.values(sections).forEach(s => s.classList.add('d-none'));
+            document.getElementById('section-assets').classList.remove('d-none');
         }
     }
 
@@ -169,9 +211,21 @@
     function renderAssetsTable() {
         const tbody = document.getElementById('assetsTableBody');
         tbody.innerHTML = '';
+        const role = getRoleFromToken();
+        const canEditDelete = ['Admin', 'Assets Manager'].includes(role);
         assets.forEach(a => {
             const tr = document.createElement('tr');
             const availableFlag = isAssetAvailable(a);
+            let actions = '';
+            if (canEditDelete) {
+                actions += `<button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${a.id}">Edit</button>
+                    <button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${a.id}">Delete</button>`;
+            }
+            if (availableFlag) {
+                actions += `<button class="btn btn-sm btn-outline-primary ms-1" data-action="assign" data-id="${a.id}">Assign</button>`;
+            } else {
+                actions += `<button class="btn btn-sm btn-outline-success ms-1" data-action="release" data-id="${a.id}">Release</button>`;
+            }
             tr.innerHTML = `
                 <td>${a.id}</td>
                 <td><span class="text-muted">${a.serial_number ?? '-'}</span></td>
@@ -182,12 +236,7 @@
                 <td><span class="badge bg-light text-dark">${a.category}</span></td>
                 <td>${availableFlag ? '<span class="badge bg-success">Yes</span>' : '<span class="badge bg-warning text-dark">No</span>'}</td>
                 <td>${isAssigned(a) ? (userIdToName.get(String(a.user_id)) || a.user_id) : '-'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-secondary" data-action="edit" data-id="${a.id}">Edit</button>
-                    <button class="btn btn-sm btn-outline-danger ms-1" data-action="delete" data-id="${a.id}">Delete</button>
-                    ${availableFlag ? `<button class="btn btn-sm btn-outline-primary ms-1" data-action="assign" data-id="${a.id}">Assign</button>` : `<button class="btn btn-sm btn-outline-success ms-1" data-action="release" data-id="${a.id}">Release</button>`}
-                    
-                </td>
+                <td>${actions}</td>
             `;
             tr.addEventListener('click', () => {
                 selectedAssetId = a.id;
@@ -433,8 +482,12 @@
             tbody.innerHTML = '';
             users.forEach(u => {
                 const tr = document.createElement('tr');
+                const fullName = [u.firstname, u.lastname].filter(Boolean).join(' ') || '-';
+                console.log(users)
                 tr.innerHTML = `
                     <td>${u.id}</td>
+                    <td>${fullName}</td>
+                    <td>${u.email || '-'}</td>
                     <td>${u.username}</td>
                     <td>${u.department || '-'}</td>
                     <td>
@@ -450,7 +503,7 @@
                 tbody.appendChild(tr);
             });
         } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-danger">${e.message || 'Failed to fetch users'}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-danger">${e.message || 'Failed to fetch users'}</td></tr>`;
         }
     }
 
@@ -481,9 +534,17 @@
     createUserForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(createUserForm);
-        const payload = { username: fd.get('username'), password: fd.get('password'), role: fd.get('role'), department: fd.get('department') };
+        const payload = { username: fd.get('username'), password: fd.get('password'), role: fd.get('role'), department: fd.get('department'), firstname: fd.get('firstname'), lastname: fd.get('lastname'), email: fd.get('email') };
         try {
-            await authService.register(payload.username, payload.password, payload.role, payload.department);
+            await authService.register(
+        payload.username,
+        payload.password,
+        payload.role,
+        payload.department,
+        payload.firstname,
+        payload.lastname,
+        payload.email
+        );
             createUserForm.reset();
             const modalEl = document.getElementById('createUserModal');
             const modal = bootstrap.Modal.getInstance(modalEl);

@@ -47,18 +47,23 @@ class AuthService {
         }
     }
 
-    async register(username, password, role, department) {
+    async register(username, password, role, department, firstname, lastname, email, sendToken = true) {
+        // For self-registration, don't send role - backend will default to Employee
+        const payload = { username, password, department, firstname, lastname, email };
+        if (role && sendToken) {
+            payload.role = role;
+        }
         try {
-            const token = this.getToken();
+            const token = sendToken ? this.getToken() : null;
             const response = await fetch(`${this.baseURL}/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
                 },
-                body: JSON.stringify({ username, password, role, department }),
+                body: JSON.stringify(payload),
             });
-
+            console.log("PAYLOAD SENT:", payload);
             if (!response.ok) {
                 let errorMessage = 'Registration failed';
                 try {
@@ -74,7 +79,7 @@ class AuthService {
         } catch (error) {
             // Handle network errors (CORS, connection refused, etc.)
             // Check for actual network failures, not validation errors
-            if (error.message === 'Failed to fetch' || 
+            if (error.message === 'Failed to fetch' ||
                 (error.name === 'TypeError' && error.message.includes('fetch')) ||
                 error.message.includes('NetworkError') ||
                 error.message.includes('Network request failed')) {

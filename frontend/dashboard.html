@@ -22,7 +22,7 @@
                 <small class="text-muted">Management Suite</small>
             </div>
             <nav class="nav flex-column p-2">
-                <a class="nav-link active" href="#" data-section="section-dashboard">Dashboard</a>
+                <a class="nav-link active" href="#" data-section="section-dashboard" id="dashboardNavLink">Dashboard</a>
                 <a class="nav-link" href="#" data-section="section-assets">Assets</a>
                 <a class="nav-link" href="#" data-section="section-users" id="usersNavLink" style="display:none">Users</a>
             </nav>
@@ -88,7 +88,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="text-end mt-2">
+                    <div class="text-end mt-2" id="logsSection">
                         <button class="btn btn-outline-secondary btn-sm" id="viewLogsBtn" disabled>View Selected Asset Logs</button>
                     </div>
                 </section>
@@ -105,7 +105,7 @@
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-hover align-middle">
-                                    <thead><tr><th>ID</th><th>Username</th><th>Department</th><th>Role</th><th>Actions</th></tr></thead>
+                                    <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Username</th><th>Department</th><th>Role</th><th>Actions</th></tr></thead>
                                     <tbody id="usersTableBody"></tbody>
                                 </table>
                             </div>
@@ -130,6 +130,9 @@
             <form class="modal-content" id="createUserForm">
                 <div class="modal-header"><h5 class="modal-title">Create User</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
                 <div class="modal-body">
+                    <div class="mb-2"><label class="form-label">First Name</label><input class="form-control" name="firstname" required /></div>
+                    <div class="mb-2"><label class="form-label">Last Name</label><input class="form-control" name="lastname" required /></div>
+                    <div class="mb-2"><label class="form-label">Email</label><input class="form-control" name="email" type="email" required /></div>
                     <div class="mb-2"><label class="form-label">Username</label><input class="form-control" name="username" minlength="3" required /></div>
                     <div class="mb-2"><label class="form-label">Password</label><input class="form-control" name="password" type="password" minlength="8" required /></div>
                     <div class="mb-2"><label class="form-label">Department</label><input class="form-control" name="department" /></div>

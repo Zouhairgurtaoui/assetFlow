@@ -134,7 +134,7 @@ def assign_asset(asset_id):
 # Release an asset
 @assets_bp.route("/release/<int:asset_id>", methods=["PUT"])
 @token_required
-@role_required(["Admin", "Assets Manager", "Employee"])
+@role_required(["Admin", "Assets Manager", "HR", "Employee"])
 def release_asset(asset_id):
     asset = Asset.query.get(asset_id)
     if not asset:
@@ -163,8 +163,15 @@ def get_assets():
     user_id = request.args.get("user_id")
     is_available = request.args.get("is_available")
     query = Asset.query
-    if user_id:
-        query = query.filter_by(user_id=user_id)
+    claims = g.jwt_data
+    user_role = claims.get("role")
+    current_user_id = claims.get("user")
+    # If Employee, only show their own assets
+    if user_role == "Employee":
+        query = query.filter_by(user_id=current_user_id)
+    else:
+        if user_id:
+            query = query.filter_by(user_id=user_id)
     if is_available is not None:
         query = query.filter_by(is_available=is_available.lower() == "true")
     assets = query.all()
@@ -173,7 +180,7 @@ def get_assets():
 # Get logs for an asset
 @assets_bp.route("/<int:asset_id>/logs", methods=["GET"])
 @token_required
-@role_required(["Admin", "Assets Manager", "HR", "Employee"])
+@role_required(["Admin", "Assets Manager", "HR"])
 def get_asset_logs(asset_id):
     logs = AssetLog.query.filter_by(asset_id=asset_id).order_by(AssetLog.created_at.desc()).all()
     return asset_log_schema.jsonify(logs), 200
