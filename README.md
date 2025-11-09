@@ -11,7 +11,7 @@ A lightweight asset management system with role-based access, elegant dashboard,
 1) Clone the repo
    # ensure the git is installed in your local machine
    ```bash
-   git clone 
+   git clone https://github.com/Zouhairgurtaoui/assetFlow.git
    ```
 3) Install Python deps and run services (from two terminals):
 
