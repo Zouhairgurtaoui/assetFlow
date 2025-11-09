@@ -9,7 +9,7 @@ A lightweight asset management system with role-based access, elegant dashboard,
 
 ## Quick Start
 1) Clone the repo
-   # ensure the git is installed in your local machine
+   ### ensure the git is installed in your local machine
    ```bash
    git clone https://github.com/Zouhairgurtaoui/assetFlow.git
    ```
