@@ -5,30 +5,34 @@ A lightweight asset management system with role-based access, elegant dashboard,
 - Frontend: Vanilla JS, Bootstrap 5, Chart.js
 - Services: Flask microservices
   - AuthService (port 5000): JWT authentication, user management
-  - AssetService (port 8000): Assets CRUD, assignment, logs
+  - AssetService (port 8000): Assets CRUD, assignment, logsassetFlow/AssetService
 
 ## Quick Start
 
 1) Install Python deps and run services (from two terminals):
 
 ```bash
+# create a virtual envirenement
+python3 -m venv env .
+# In linux
+source env/bin/activate
+# In Windows
+./env/Script/activate
 # AuthService
-export FLASK_APP=assetFlow/AuthService
-flask --app assetFlow/AuthService run -p 5000
+python3 run_auth.py
 
 # AssetService
-export FLASK_APP=assetFlow/AssetService
-flask --app assetFlow/AssetService run -p 8000
+python3 run_assets.py
 ```
 
-2) Serve the frontend (e.g., VS Code Live Server or any static server) from `assetFlow/frontend/`, then open `index.html`.
+2) Serve the frontend (e.g., VS Code Live Server or any static server ex: `python3 -m http.server 8080`) from `assetFlow/frontend/`, then open `index.html`.
 
 3) Register an Admin, login, and go to `dashboard.html`.
 
 Notes:
 - SQLite DB files are created at:
-  - `assetFlow/AuthService/users.db`
-  - `assetFlow/AssetService/assets.db`
+  - `inctance/susers.db`
+  - `inctance/assets.db`
 - To reset schemas, delete the DB files and restart services.
 
 ---
