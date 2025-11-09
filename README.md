@@ -353,11 +353,7 @@ Frontend surfaces server messages where possible (modals/alerts), and network er
 - Server-side role checks via validated JWT payload (AssetService validates via AuthService `/auth/validate`)
 ---
 
-## Troubleshooting
 
-- “no such column” on startup: delete DB files to recreate schema
-- 401/403 when calling assets: ensure you’re logged in and role permits action
-- CORS errors: make sure both services are running on the documented ports
 
 
 ---
