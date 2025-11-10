@@ -3,3 +3,8 @@ instance/**
 .idea/**
 env/**
 TODO.md
+.env.example
+node_modules/** 
+docs/** 
+backend/assetflow.db
+ARCHITECTURE.md

@@ -1,0 +1,22 @@
+# Flask and extensions
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-JWT-Extended==4.6.0
+Flask-CORS==4.0.0
+Flask-Marshmallow==0.15.0
+
+# Database
+SQLAlchemy==2.0.23
+
+# Security
+Werkzeug==3.0.1
+PyJWT==2.8.0
+
+# Utilities
+python-dotenv==1.0.0
+marshmallow==3.20.1
+marshmallow-sqlalchemy==0.29.0
+
+# Optional: MySQL support (uncomment if using MySQL)
+# PyMySQL==1.1.0
+# cryptography==41.0.7
