@@ -26,61 +26,6 @@ AssetFlow is a full-stack web application designed to manage IT assets throughou
 - **Routing**: React Router v6
 - **Notifications**: Sonner
 
-## 📋 Features
-
-### 1. Authentication & Authorization
-- JWT-based authentication with refresh tokens
-- Secure token storage (sessionStorage)
-- Role-based access control (RBAC)
-- Four user roles: Admin, Asset Manager, HR, Employee
-
-### 2. Asset Management
-- Complete CRUD operations for assets
-- Advanced server-side and client-side filtering:
-  - By category, status, department
-  - By assigned user
-  - By date range
-  - By warranty expiration
-  - Full-text search
-- Asset assignment and release workflow
-- Asset history and audit logging
-- Depreciation calculation (straight-line method)
-- CSV export functionality
-
-### 3. Maintenance Ticket System
-- Create, update, and track maintenance tickets
-- Ticket priority levels (Low, Medium, High, Critical)
-- Status workflow: New → Under Review → In Progress → Resolved → Closed
-- Automatic asset status updates
-- File attachment support
-- Ticket assignment to technicians
-- Resolution tracking
-
-### 4. License Management
-- Software license tracking
-- Renewal alerts
-- Expiration monitoring
-- Cost tracking
-
-### 5. Dashboard & Reporting
-- Real-time KPI cards:
-  - Total assets
-  - Available assets
-  - Under maintenance
-  - Open tickets
-- Interactive charts (Recharts):
-  - Assets by category (Bar chart)
-  - Assets by status (Pie chart)
-  - Assets by department (Pie chart)
-- Warranty expiration alerts
-- Recent activity feed
-- Asset value and depreciation reports
-
-### 6. User Management (Admin only)
-- Create, update, and delete users
-- Role assignment
-- Department management
-- Activity tracking
 
 ## 🚀 Getting Started
 
@@ -159,9 +104,8 @@ The frontend will start on `http://localhost:5173`
 1. **Access the application**: Open `http://localhost:5173` in your browser
 
 2. **Register the first admin user**:
-   - Use the registration form
-   - Select "Admin" as the role
-   - Use a strong password
+   - Use the Script in backend directory `python3 create_admin.py`
+   
 
 3. **Login** with your admin credentials
 
@@ -197,27 +141,10 @@ assetFlow/
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── ARCHITECTURE.md            # System Architecture
 ├── .env.example              # Environment Variables Template
 └── README.md                 # This file
 ```
 
-## 🔐 Role-Based Permissions
-
-| Feature | Admin | Asset Manager | HR | Employee |
-|---------|-------|--------------|-----|----------|
-| **Dashboard** | ✅ Full | ✅ Full | ✅ Full | ❌ |
-| **View Assets** | ✅ All | ✅ All | ✅ All | ✅ Assigned |
-| **Create Assets** | ✅ | ✅ | ❌ | ❌ |
-| **Update Assets** | ✅ | ✅ | ❌ | ❌ |
-| **Delete Assets** | ✅ | ✅ | ❌ | ❌ |
-| **Assign Assets** | ✅ | ✅ | ✅ | ❌ |
-| **Release Assets** | ✅ | ✅ | ✅ | ✅ Own only |
-| **View Maintenance** | ✅ All | ✅ All | ✅ All | ✅ Own |
-| **Create Tickets** | ✅ | ✅ | ✅ | ✅ |
-| **Update Tickets** | ✅ | ✅ | ✅ | ❌ |
-| **Manage Users** | ✅ | ❌ | ❌ | ❌ |
-| **View Reports** | ✅ | ✅ | ✅ | ❌ |
 
 ## 🛠️ API Endpoints
 
@@ -355,18 +282,6 @@ npm run build
 
 3. **Configure environment variables** in hosting platform
 
-## 🔒 Security Best Practices
-
-✅ JWT tokens stored in sessionStorage (not localStorage)  
-✅ Automatic token refresh mechanism  
-✅ Password hashing with bcrypt  
-✅ Input validation on backend  
-✅ SQL injection prevention (ORM)  
-✅ XSS protection (React auto-escaping)  
-✅ CORS configuration  
-✅ Role-based authorization on all endpoints  
-✅ Rate limiting ready (implement in production)  
-
 ## 📝 Development Notes
 
 ### TypeScript Errors
@@ -397,19 +312,6 @@ flask db upgrade
 - **Module not found**: Run `npm install`
 - **API connection**: Check VITE_API_BASE_URL in `.env`
 - **Build errors**: Clear node_modules and reinstall
-
-## 📚 Additional Resources
-
-
-- **API Documentation**: See endpoint definitions above
-- **Component Library**: [shadcn/ui](https://ui.shadcn.com/)
-- **React Query**: [TanStack Query](https://tanstack.com/query)
-- **Flask**: [Flask Documentation](https://flask.palletsprojects.com/)
-
-
-## 💬 Support
-
-For issues, questions, or contributions, please open an issue on the repository.
 
 ---
 
